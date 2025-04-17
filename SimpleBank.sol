@@ -156,7 +156,7 @@ contract SimpleBank {
         updateUserGweiReward(msg.sender);
         userGweiBalances[msg.sender] -= _amount;
 
-        gigaWei.transferFrom(address(this), msg.sender, _amount);
+        gigaWei.transfer(msg.sender, _amount);
         emit Withdrawn(msg.sender, _amount, address(gigaWei));
     }
 
