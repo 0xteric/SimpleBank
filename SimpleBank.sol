@@ -41,6 +41,9 @@ contract SimpleBank {
         _;
     }
 
+    /**
+     * Returns the total ETH deposited by users through the 'depositEther()' function
+     */
     function getTotalEthDeposits() public view returns (uint) {
         uint totalDeposits = 0;
         for (uint i = 0; i < users.length; i++) {
@@ -49,6 +52,9 @@ contract SimpleBank {
         return totalDeposits;
     }
 
+    /**
+     * Returns the total Gwei deposited by users through the 'depositGwei()' function
+     */
     function getTotalGweiDeposits() public view returns (uint) {
         uint totalDeposits = 0;
         for (uint i = 0; i < users.length; i++) {
@@ -57,6 +63,10 @@ contract SimpleBank {
         return totalDeposits;
     }
 
+    /**
+     * Returns lent - borrowed user balance
+     * @param _user user address
+     */
     function getNetBalanceOf(address _user) public view returns (uint) {
         uint userBalance = userEthBalances[_user] +
             userGweiBalances[_user] *
@@ -72,12 +82,20 @@ contract SimpleBank {
         }
     }
 
+    /**
+     * Returns the available amount in ETH value to borrow for a user
+     * @param _user user address
+     */
     function getAvailableToBorrowOf(address _user) public view returns (uint) {
         uint availableToBorrow = (getNetBalanceOf(_user) * 10000) /
             collateralRatio;
         return (availableToBorrow);
     }
 
+    /**
+     * Returns user claimable ETH rewards
+     * @param user user address
+     */
     function getClaimableEthRewards(address user) external view returns (uint) {
         uint userBalance = userEthBalances[user];
         uint accumulated = (userBalance * accEthRewardPerToken) / 1e18;
@@ -85,6 +103,10 @@ contract SimpleBank {
         return userPendingEthRewards[user] + owed;
     }
 
+    /**
+     * Updates user claimable ETH rewards
+     * @param user user address
+     */
     function updateUserEthReward(address user) internal {
         uint userBalance = userEthBalances[user];
         uint accumulated = (userBalance * accEthRewardPerToken) / 1e18;
@@ -97,6 +119,10 @@ contract SimpleBank {
         userEthRewardsDebt[user] = accumulated;
     }
 
+    /**
+     * Updates user claimable Gwei rewards
+     * @param user user address
+     */
     function updateUserGweiReward(address user) internal {
         uint userBalance = userGweiBalances[user];
         uint accumulated = (userBalance * accGweiRewardPerToken) / 1e18;
@@ -108,6 +134,10 @@ contract SimpleBank {
 
         userGweiRewardsDebt[user] = accumulated;
     }
+
+    /**
+     * Deposits ether into the user bank account
+     */
 
     function depositEther() external payable {
         require(msg.value > 0, "Input must be positive.");
@@ -121,6 +151,11 @@ contract SimpleBank {
 
         emit Deposited(msg.sender, msg.value, address(0));
     }
+
+    /**
+     * Deposits Gwei into the user bank account
+     * @param _amount amount of Gwei tokens to deposit
+     */
 
     function depositGwei(uint _amount) external {
         require(_amount > 0, "Input must be positive.");
@@ -137,6 +172,10 @@ contract SimpleBank {
         emit Deposited(msg.sender, _amount, address(gigaWei));
     }
 
+    /**
+     *  Withdraws available ether from user bank account and sends it to user address
+     * @param _amount amount of ether to withdraw
+     */
     function withdrawEther(uint _amount) external {
         uint netUserBalance = getNetBalanceOf(msg.sender);
         require(netUserBalance >= _amount, "Not enough user net balance");
@@ -149,6 +188,10 @@ contract SimpleBank {
         emit Withdrawn(msg.sender, _amount, address(0));
     }
 
+    /**
+     *  Withdraws available Gwei from user bank account and sends it to user address
+     * @param _amount amount of ether to withdraw
+     */
     function withdrawGwei(uint _amount) external {
         uint netUserBalance = getNetBalanceOf(msg.sender);
         require(netUserBalance >= _amount, "Not enough user net balance");
@@ -160,6 +203,10 @@ contract SimpleBank {
         emit Withdrawn(msg.sender, _amount, address(gigaWei));
     }
 
+    /**
+     *  Borrows ether collateralized with ether and Gwei user balances
+     * @param _amount amount of eth to borrow
+     */
     function borrowEth(uint _amount) external {
         require(
             _amount <= getAvailableToBorrowOf(msg.sender),
@@ -172,6 +219,10 @@ contract SimpleBank {
         emit Borrowed(msg.sender, _amount, address(0));
     }
 
+    /**
+     * Borrows Gwei collateralized with ether and Gwei user balances
+     * @param _amount amount of Gwei to borrow
+     */
     function borrowGwei(uint _amount) external {
         require(
             _amount <= getAvailableToBorrowOf(msg.sender) / 1_000_000_000 wei,
@@ -183,6 +234,9 @@ contract SimpleBank {
         emit Borrowed(msg.sender, _amount, address(gigaWei));
     }
 
+    /**
+     * Claims available user ether rewards
+     */
     function claimEthRewards() external {
         updateUserEthReward(msg.sender);
         uint reward = userPendingEthRewards[msg.sender];
@@ -193,6 +247,9 @@ contract SimpleBank {
         require(success, "Claim failed");
     }
 
+    /**
+     * Claims available user Gwei rewards
+     */
     function claimGweiRewards() external {
         updateUserEthReward(msg.sender);
         uint reward = userPendingGweiRewards[msg.sender];
@@ -202,6 +259,10 @@ contract SimpleBank {
         gigaWei.transfer(msg.sender, reward);
     }
 
+    /**
+     *
+     * Repays an ether loan
+     */
     function repayEth() external payable {
         require(msg.value > 0, "Input must be positive.");
         require(userEthDebts[msg.sender] > 0, "No debt to repay.");
@@ -221,6 +282,10 @@ contract SimpleBank {
         emit Repaid(msg.sender, amount, address(0));
     }
 
+    /**
+     *  Repays a Gwei loan
+     * @param _amount  amount of Gwei to repay
+     */
     function repayGwei(uint _amount) external {
         require(_amount > 0, "Input must be positive");
         require(userGweiDebts[msg.sender] > 0, "No debt to repay");
@@ -242,10 +307,18 @@ contract SimpleBank {
         emit Repaid(msg.sender, _amount, address(gigaWei));
     }
 
+    /**
+     *  Updates collateral ratio needed for loans
+     * @param _ratio new collateral ratio
+     */
     function modifyCollateralRatio(uint16 _ratio) external onlyAdmin {
         collateralRatio = _ratio;
     }
 
+    /**
+     * Updates borrowing fee
+     * @param _fee New borrowing fee
+     */
     function modifyBorrowFee(uint16 _fee) external onlyAdmin {
         borrowFee = _fee;
     }
